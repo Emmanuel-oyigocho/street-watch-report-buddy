@@ -34,3 +34,11 @@ export interface DatabaseReport {
   timestamp: string;
   status: 'pending' | 'resolved';
 }
+
+export interface Profile {
+  id: string;
+  username: string;
+  role: 'user' | 'admin';
+  created_at: string;
+  updated_at: string;
+}

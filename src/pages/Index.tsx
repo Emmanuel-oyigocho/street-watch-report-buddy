@@ -1,18 +1,11 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import UserDashboard from '../components/UserDashboard';
 import AdminDashboard from '../components/AdminDashboard';
-import { Report } from '../types';
+import { Report, Profile, DatabaseReport } from '../types';
 import { useToast } from '@/hooks/use-toast';
-
-interface Profile {
-  id: string;
-  username: string;
-  role: 'user' | 'admin';
-}
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -51,7 +44,7 @@ const Index = () => {
         variant: "destructive",
       });
     } else {
-      setProfile(data);
+      setProfile(data as Profile);
     }
   };
 
@@ -84,7 +77,18 @@ const Index = () => {
         variant: "destructive",
       });
     } else {
-      setReports(data || []);
+      // Transform database reports to frontend format
+      const transformedReports: Report[] = (data as DatabaseReport[]).map(dbReport => ({
+        id: dbReport.id,
+        location: dbReport.location,
+        hazardType: dbReport.hazard_type,
+        description: dbReport.description,
+        imageUrl: dbReport.image_url,
+        submittedBy: dbReport.submitted_by,
+        timestamp: dbReport.timestamp,
+        status: dbReport.status as 'pending' | 'resolved',
+      }));
+      setReports(transformedReports);
     }
   };
 
@@ -200,10 +204,10 @@ const Index = () => {
   const reportsForDashboard = reports.map(report => ({
     id: report.id,
     location: report.location,
-    hazardType: report.hazard_type,
+    hazardType: report.hazardType,
     description: report.description,
-    imageUrl: report.image_url,
-    submittedBy: report.submitted_by,
+    imageUrl: report.imageUrl,
+    submittedBy: report.submittedBy,
     timestamp: report.timestamp,
     status: report.status as 'pending' | 'resolved',
   }));
