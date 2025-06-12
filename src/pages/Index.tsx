@@ -1,72 +1,212 @@
 
-import React, { useState, useEffect } from 'react';
-import LoginForm from '../components/LoginForm';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import UserDashboard from '../components/UserDashboard';
 import AdminDashboard from '../components/AdminDashboard';
-import { User, Report } from '../types';
+import { Report } from '../types';
+import { useToast } from '@/hooks/use-toast';
+
+interface Profile {
+  id: string;
+  username: string;
+  role: 'user' | 'admin';
+}
 
 const Index = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
-    // Load user from localStorage
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchReports();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load user profile",
+        variant: "destructive",
+      });
+    } else {
+      setProfile(data);
+    }
+  };
+
+  const fetchReports = async () => {
+    if (!user) return;
+
+    let query = supabase
+      .from('reports')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
+    // If user is not admin, only show their own reports
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileData?.role !== 'admin') {
+      query = query.eq('user_id', user.id);
     }
 
-    // Load reports from localStorage
-    const savedReports = localStorage.getItem('hazardReports');
-    if (savedReports) {
-      setReports(JSON.parse(savedReports));
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching reports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load reports",
+        variant: "destructive",
+      });
+    } else {
+      setReports(data || []);
     }
-  }, []);
-
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    localStorage.setItem('currentUser', JSON.stringify(user));
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('currentUser');
+  const handleReportSubmit = async (reportData: Omit<Report, 'id' | 'timestamp' | 'status'>) => {
+    if (!user || !profile) return;
+
+    const { error } = await supabase
+      .from('reports')
+      .insert({
+        user_id: user.id,
+        location: reportData.location,
+        hazard_type: reportData.hazardType,
+        description: reportData.description,
+        image_url: reportData.imageUrl,
+        submitted_by: profile.username,
+      });
+
+    if (error) {
+      console.error('Error submitting report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit report",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Report submitted successfully",
+      });
+      fetchReports();
+    }
   };
 
-  const handleReportSubmit = (report: Omit<Report, 'id' | 'timestamp' | 'status'>) => {
-    const newReport: Report = {
-      ...report,
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      status: 'pending'
-    };
+  const handleReportUpdate = async (reportId: string, updates: Partial<Report>) => {
+    const { error } = await supabase
+      .from('reports')
+      .update({
+        status: updates.status,
+      })
+      .eq('id', reportId);
 
-    const updatedReports = [...reports, newReport];
-    setReports(updatedReports);
-    localStorage.setItem('hazardReports', JSON.stringify(updatedReports));
+    if (error) {
+      console.error('Error updating report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update report",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Report updated successfully",
+      });
+      fetchReports();
+    }
   };
 
-  const handleReportUpdate = (reportId: string, updates: Partial<Report>) => {
-    const updatedReports = reports.map(report =>
-      report.id === reportId ? { ...report, ...updates } : report
-    );
-    setReports(updatedReports);
-    localStorage.setItem('hazardReports', JSON.stringify(updatedReports));
+  const handleReportDelete = async (reportId: string) => {
+    const { error } = await supabase
+      .from('reports')
+      .delete()
+      .eq('id', reportId);
+
+    if (error) {
+      console.error('Error deleting report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete report",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Report deleted successfully",
+      });
+      fetchReports();
+    }
   };
 
-  const handleReportDelete = (reportId: string) => {
-    const updatedReports = reports.filter(report => report.id !== reportId);
-    setReports(updatedReports);
-    localStorage.setItem('hazardReports', JSON.stringify(updatedReports));
+  const handleLogout = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
+    } else {
+      navigate('/auth');
+    }
   };
 
-  if (!currentUser) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <LoginForm onLogin={handleLogin} />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
+
+  if (!user || !profile) {
+    return null;
+  }
+
+  const userForDashboard = {
+    username: profile.username,
+    role: profile.role,
+  };
+
+  const reportsForDashboard = reports.map(report => ({
+    id: report.id,
+    location: report.location,
+    hazardType: report.hazard_type,
+    description: report.description,
+    imageUrl: report.image_url,
+    submittedBy: report.submitted_by,
+    timestamp: report.timestamp,
+    status: report.status as 'pending' | 'resolved',
+  }));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -78,7 +218,7 @@ const Index = () => {
             </h1>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Welcome, {currentUser.username} ({currentUser.role})
+                Welcome, {profile.username} ({profile.role})
               </span>
               <button
                 onClick={handleLogout}
@@ -92,16 +232,16 @@ const Index = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentUser.role === 'admin' ? (
+        {profile.role === 'admin' ? (
           <AdminDashboard
-            reports={reports}
+            reports={reportsForDashboard}
             onReportUpdate={handleReportUpdate}
             onReportDelete={handleReportDelete}
           />
         ) : (
           <UserDashboard
-            user={currentUser}
-            reports={reports.filter(report => report.submittedBy === currentUser.username)}
+            user={userForDashboard}
+            reports={reportsForDashboard.filter(report => report.submittedBy === profile.username)}
             onReportSubmit={handleReportSubmit}
           />
         )}

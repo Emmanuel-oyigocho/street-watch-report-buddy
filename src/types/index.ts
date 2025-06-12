@@ -22,3 +22,15 @@ export interface ReportFormData {
   imageUrl?: string;
   submittedBy: string;
 }
+
+export interface DatabaseReport {
+  id: string;
+  user_id: string;
+  location: string;
+  hazard_type: string;
+  description: string;
+  image_url?: string;
+  submitted_by: string;
+  timestamp: string;
+  status: 'pending' | 'resolved';
+}
