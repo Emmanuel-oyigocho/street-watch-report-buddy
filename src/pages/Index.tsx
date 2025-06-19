@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +15,8 @@ const Index = () => {
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
+  const [currentView, setCurrentView] = useState<'user' | 'admin'>('user');
+  const [activeSection, setActiveSection] = useState('dashboard');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -184,6 +185,15 @@ const Index = () => {
     }
   };
 
+  const handleViewChange = (view: 'user' | 'admin') => {
+    setCurrentView(view);
+    setActiveSection('dashboard'); // Reset to dashboard when switching views
+  };
+
+  const handleNavigation = (section: string) => {
+    setActiveSection(section);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -215,12 +225,31 @@ const Index = () => {
     status: report.status as 'pending' | 'resolved',
   }));
 
+  // Filter reports based on active section
+  const getFilteredReports = () => {
+    if (activeSection === 'my-reports') {
+      return reportsForDashboard.filter(report => report.submittedBy === profile.username);
+    }
+    return reportsForDashboard;
+  };
+
+  const getPageTitle = () => {
+    if (activeSection === 'my-reports') return 'My Reports';
+    if (activeSection === 'all-reports') return 'All Reports';
+    if (activeSection === 'user-management') return 'User Management';
+    if (activeSection === 'settings') return 'Settings';
+    return 'Dashboard';
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar
           user={userForDashboard}
           onLogout={handleLogout}
+          currentView={currentView}
+          onViewChange={handleViewChange}
+          onNavigate={handleNavigation}
         />
         
         <div className="flex-1 flex flex-col">
@@ -230,12 +259,12 @@ const Index = () => {
                 <div className="flex items-center space-x-4">
                   <SidebarTrigger />
                   <h1 className="text-xl font-semibold text-gray-900">
-                    Street Hazard Reporting System
+                    {getPageTitle()}
                   </h1>
                 </div>
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">
-                    Welcome, {profile.username} ({profile.role})
+                    Welcome, {profile.username} ({currentView === 'admin' && profile.role === 'admin' ? 'Admin View' : 'User View'})
                   </span>
                 </div>
               </div>
@@ -243,16 +272,16 @@ const Index = () => {
           </header>
 
           <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-            {profile.role === 'admin' ? (
+            {currentView === 'admin' && profile.role === 'admin' ? (
               <AdminDashboard
-                reports={reportsForDashboard}
+                reports={getFilteredReports()}
                 onReportUpdate={handleReportUpdate}
                 onReportDelete={handleReportDelete}
               />
             ) : (
               <UserDashboard
                 user={userForDashboard}
-                reports={reportsForDashboard.filter(report => report.submittedBy === profile.username)}
+                reports={getFilteredReports()}
                 onReportSubmit={handleReportSubmit}
               />
             )}

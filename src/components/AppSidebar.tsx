@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 
 interface AppSidebarProps {
   user: {
@@ -21,24 +22,27 @@ interface AppSidebarProps {
     role: 'user' | 'admin';
   };
   onLogout: () => void;
+  currentView: 'user' | 'admin';
+  onViewChange: (view: 'user' | 'admin') => void;
+  onNavigate: (section: string) => void;
 }
 
-const AppSidebar = ({ user, onLogout }: AppSidebarProps) => {
+const AppSidebar = ({ user, onLogout, currentView, onViewChange, onNavigate }: AppSidebarProps) => {
   const navigationItems = [
     {
       title: 'Dashboard',
       icon: Home,
-      url: '#',
+      key: 'dashboard',
     },
     {
       title: 'My Reports',
       icon: FileText,
-      url: '#',
+      key: 'my-reports',
     },
     {
       title: 'Settings',
       icon: Settings,
-      url: '#',
+      key: 'settings',
     },
   ];
 
@@ -46,12 +50,12 @@ const AppSidebar = ({ user, onLogout }: AppSidebarProps) => {
     {
       title: 'All Reports',
       icon: Shield,
-      url: '#',
+      key: 'all-reports',
     },
     {
       title: 'User Management',
       icon: User,
-      url: '#',
+      key: 'user-management',
     },
   ];
 
@@ -70,6 +74,27 @@ const AppSidebar = ({ user, onLogout }: AppSidebarProps) => {
       </SidebarHeader>
 
       <SidebarContent>
+        {user.role === 'admin' && (
+          <SidebarGroup>
+            <SidebarGroupLabel>View Mode</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="p-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">User View</span>
+                  <Switch
+                    checked={currentView === 'admin'}
+                    onCheckedChange={(checked) => onViewChange(checked ? 'admin' : 'user')}
+                  />
+                  <span className="text-sm">Admin View</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {currentView === 'admin' ? 'Viewing as Admin' : 'Viewing as User'}
+                </p>
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -77,10 +102,13 @@ const AppSidebar = ({ user, onLogout }: AppSidebarProps) => {
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center">
+                    <button 
+                      onClick={() => onNavigate(item.key)}
+                      className="flex items-center w-full"
+                    >
                       <item.icon className="w-4 h-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -88,7 +116,7 @@ const AppSidebar = ({ user, onLogout }: AppSidebarProps) => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {user.role === 'admin' && (
+        {currentView === 'admin' && user.role === 'admin' && (
           <SidebarGroup>
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -96,10 +124,13 @@ const AppSidebar = ({ user, onLogout }: AppSidebarProps) => {
                 {adminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
-                      <a href={item.url} className="flex items-center">
+                      <button 
+                        onClick={() => onNavigate(item.key)}
+                        className="flex items-center w-full"
+                      >
                         <item.icon className="w-4 h-4" />
                         <span>{item.title}</span>
-                      </a>
+                      </button>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
