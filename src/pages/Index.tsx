@@ -1,9 +1,12 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import UserDashboard from '../components/UserDashboard';
 import AdminDashboard from '../components/AdminDashboard';
+import AdminUserManagement from '../components/AdminUserManagement';
+import AdminSettings from '../components/AdminSettings';
 import AppSidebar from '../components/AppSidebar';
 import { Report, Profile, DatabaseReport } from '../types';
 import { useToast } from '@/hooks/use-toast';
@@ -241,6 +244,35 @@ const Index = () => {
     return 'Dashboard';
   };
 
+  const renderMainContent = () => {
+    if (currentView === 'admin' && profile.role === 'admin') {
+      switch (activeSection) {
+        case 'user-management':
+          return <AdminUserManagement />;
+        case 'settings':
+          return <AdminSettings />;
+        case 'all-reports':
+        case 'dashboard':
+        default:
+          return (
+            <AdminDashboard
+              reports={getFilteredReports()}
+              onReportUpdate={handleReportUpdate}
+              onReportDelete={handleReportDelete}
+            />
+          );
+      }
+    } else {
+      return (
+        <UserDashboard
+          user={userForDashboard}
+          reports={getFilteredReports()}
+          onReportSubmit={handleReportSubmit}
+        />
+      );
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -272,19 +304,7 @@ const Index = () => {
           </header>
 
           <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-            {currentView === 'admin' && profile.role === 'admin' ? (
-              <AdminDashboard
-                reports={getFilteredReports()}
-                onReportUpdate={handleReportUpdate}
-                onReportDelete={handleReportDelete}
-              />
-            ) : (
-              <UserDashboard
-                user={userForDashboard}
-                reports={getFilteredReports()}
-                onReportSubmit={handleReportSubmit}
-              />
-            )}
+            {renderMainContent()}
           </main>
         </div>
       </div>
