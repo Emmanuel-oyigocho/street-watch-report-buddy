@@ -9,6 +9,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [role, setRole] = useState<'user' | 'admin'>('user');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -64,6 +65,7 @@ const Auth = () => {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               username: username || email.split('@')[0],
+              role: role,
             },
           },
         });
@@ -85,7 +87,7 @@ const Auth = () => {
         } else {
           toast({
             title: "Account Created!",
-            description: "Please check your email to verify your account.",
+            description: `Your ${role} account has been created! Please check your email to verify your account.`,
           });
         }
       }
@@ -129,19 +131,54 @@ const Auth = () => {
           </div>
 
           {!isLogin && (
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                Username (Optional)
-              </label>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your username"
-              />
-            </div>
+            <>
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                  Username (Optional)
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your username"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Account Type
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="user"
+                      checked={role === 'user'}
+                      onChange={(e) => setRole(e.target.value as 'user' | 'admin')}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">User</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="admin"
+                      checked={role === 'admin'}
+                      onChange={(e) => setRole(e.target.value as 'user' | 'admin')}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Admin</span>
+                  </label>
+                </div>
+                {role === 'admin' && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Admin accounts have full system access and management capabilities.
+                  </p>
+                )}
+              </div>
+            </>
           )}
 
           <div>
